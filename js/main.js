@@ -37,7 +37,7 @@ async function handleSuccess(stream) {
     hiddenCanvas.height = hiddenVideo.videoHeight;
     ctx.drawImage(hiddenVideo, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
     const predictions = await model.estimateFaces(hiddenVideo);
-    ctx.globalAlpha = 0.4;
+    ctx.globalAlpha = 0.6;
     ctx.fillStyle = "green";
     if (predictions.length > 0) {
       for (let i = 0; i < predictions.length; i++) {
