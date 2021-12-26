@@ -8,6 +8,9 @@
 
 'use strict';
 
+// CONSTANTS
+const UPDATE_FACE_DETECT_EVERY_N_FRAMES = 20
+
 // Put variables in global scope to make them available to the browser console.
 const shownVideo = document.querySelector('video.shown');
 const shownCanvas = document.querySelector('canvas.shown');
@@ -27,19 +30,23 @@ const constraints = {
 };
 
 async function handleSuccess(stream) {
-  const model = await blazeface.load();
   let hiddenVideo = document.querySelector('video.hidden');
   hiddenVideo.srcObject = stream;
-  let hiddenCanvas = document.querySelector('canvas.hidden');
-  let ctx = hiddenCanvas.getContext('2d');
-  let rVFC = async () => {
-    hiddenCanvas.width = hiddenVideo.videoWidth;
-    hiddenCanvas.height = hiddenVideo.videoHeight;
-    ctx.drawImage(hiddenVideo, 0, 0, hiddenCanvas.width, hiddenCanvas.height);
-    const predictions = await model.estimateFaces(hiddenVideo);
+  let canvasVideo = document.querySelector('canvas.hidden');
+  let ctx = canvasVideo.getContext('2d');
+  let counter = 0;
+  const model = await blazeface.load();
+  let predictions = null;
+  const rVFC = async () => {
+    // console.log("counter: ", counter);
+    canvasVideo.width = hiddenVideo.videoWidth;
+    canvasVideo.height = hiddenVideo.videoHeight;
+    ctx.drawImage(hiddenVideo, 0, 0, canvasVideo.width, canvasVideo.height);
     ctx.globalAlpha = 0.4;
     ctx.fillStyle = "green";
-    if (predictions.length > 0) {
+    // test rectangle
+    // ctx.fillRect(parseInt(canvasVideo.width / 3), parseInt(canvasVideo.height / 3), 50, 50);
+    if (predictions && predictions.length) {
       for (let i = 0; i < predictions.length; i++) {
         const start = predictions[i].topLeft;
         const end = predictions[i].bottomRight;
@@ -48,19 +55,24 @@ async function handleSuccess(stream) {
         ctx.fillRect(start[0], start[1], size[0], size[1]);
       }
     }
-
-    // ctx.fillRect(parseInt(hiddenCanvas.width / 3), parseInt(hiddenCanvas.height / 3), 50, 50);
-
+    if (counter % UPDATE_FACE_DETECT_EVERY_N_FRAMES == 0) {
+      counter = 1
+      predictions = await model.estimateFaces(hiddenVideo);
+    }
+    counter++;
     hiddenVideo.requestVideoFrameCallback(rVFC);
   }
   hiddenVideo.requestVideoFrameCallback(rVFC);
+
   let shownVideo = document.querySelector('video.shown');
-  shownVideo.srcObject = hiddenCanvas.captureStream();
-  // shownVideo.srcObject = stream;
+  shownVideo.srcObject = canvasVideo.captureStream();
 }
 
 function handleError(error) {
   console.log('navigator.MediaDevices.getUserMedia error: ', error.message, error.name);
 }
 
-navigator.mediaDevices.getUserMedia(constraints).then(handleSuccess).catch(handleError);
+navigator.mediaDevices
+  .getUserMedia(constraints)
+  .then(handleSuccess)
+  .catch(handleError);
